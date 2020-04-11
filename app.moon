@@ -21,6 +21,7 @@ nearest_sunday = (d, direction=1) ->
   d
 
 class extends lapis.Application
+  layout: require "views.layout"
   [home: "/"]: =>
     today = date!
 
@@ -47,12 +48,17 @@ class extends lapis.Application
   [year: "/browse/:year"]: =>
     year = assert tonumber(@params.year), "invalid year"
 
+    first_month = date first\getyear!, first\getmonth!, 1
+    today = date!
+
     @html ->
       -- list all the months
-      h1 "Months"
+      h1 "#{year} - Months"
 
-      first_month = date first\getyear!, first\getmonth!, 1
-      today = date!
+      p ->
+        a {
+          href: @url_for "home"
+        }, "Return home"
 
       ul ->
         for i=1,12
@@ -75,17 +81,47 @@ class extends lapis.Application
     start = date year, month, 1
     stop = date(year, month, 1)\addmonths(1)
 
-    current = start
+    current = start\copy!
 
     @html ->
+      pagination = ->
+        p ->
+          next_month = start\copy!\addmonths 1
+          prev_month = start\copy!\addmonths -1
+
+          a {
+            href: @url_for "month", {
+              year: prev_month\getyear!
+              month: prev_month\getmonth!
+            }
+          }, "Previous month"
+
+          text " - "
+
+          a {
+            href: @url_for "month", {
+              year: next_month\getyear!
+              month: next_month\getmonth!
+            }
+          }, "Next month"
+
+          text " - "
+
+          a {
+            href: @url_for "year", year: current\getyear!
+          }, "Return to year"
+
       h1 start\fmt "%Y-%m"
+      pagination!
       while true
         div class: "strip", ->
           h3 current\fmt "%Y-%m-%d (%A)"
           img src: strip_url current
 
-        current = current\copy!\adddays 1
+        current\adddays 1
         break unless current < stop
+      pagination!
+
 
   [sundays: "/sundays"]: =>
     start = if type(@params.from) == "string"
@@ -99,7 +135,13 @@ class extends lapis.Application
     current = nearest_sunday start
 
     @html ->
+      pagination = ->
+        a {
+          href: @url_for "sundays", nil, from: current\fmt "%Y-%m-%d"
+        }, "Next page →"
+
       h1 "Sundays"
+      pagination!
       for i=1,20
         div class: "strip", ->
           h3 current\fmt "%Y-%m-%d (%A)"
@@ -107,6 +149,5 @@ class extends lapis.Application
 
         current\adddays 7
 
-      a {
-        href: @url_for "sundays", nil, from: current\fmt "%Y-%m-%d"
-      }, "Next page →"
+      pagination!
+
